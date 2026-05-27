@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>训练打卡</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0a0c11">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="训练打卡">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  @property --p { syntax: '<number>'; inherits: false; initial-value: 0; }
+  :root {
+    --bg: #0a0c11;
+    --card: #14181f;
+    --card2: #1d222c;
+    --line: #2a3140;
+    --text: #eceef3;
+    --muted: #9aa4b4;
+    --accent: #5b8cff;
+    --accent2: #8b5cff;
+    --green: #34d399;
+    --mon: #fb7185;
+    --wed: #5b8cff;
+    --fri: #fbbf24;
+    --radius: 16px;
+  }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    padding-bottom: calc(48px + env(safe-area-inset-bottom));
+    background:
+      radial-gradient(1200px 420px at 50% -120px, rgba(91,140,255,0.16), transparent 70%),
+      var(--bg);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    touch-action: manipulation;
+  }
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(10,12,17,0.78);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--line);
+    padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
+  }
+  .title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  h1 {
+    font-size: 20px; margin: 0; letter-spacing: .5px;
+    background: linear-gradient(120deg, #fff, #aebfff);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  /* overall ring */
+  .ring {
+    --p: 0; position: relative; width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0;
+    background: conic-gradient(var(--green) calc(var(--p) * 1%), var(--card2) 0);
+    display: grid; place-items: center; transition: --p .4s;
+  }
+  .ring::before { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: var(--bg); }
+  .ring span { position: relative; font-size: 12px; font-weight: 700; }
+  .weeknav { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  .weeknav button {
+    background: var(--card2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 12px; width: 44px; height: 44px; font-size: 20px; cursor: pointer;
+    display: grid; place-items: center; transition: .15s; touch-action: manipulation;
+  }
+  .weeknav button:active { transform: scale(.92); background: var(--accent); border-color: var(--accent); }
+  .weeknav .wkinfo { flex: 1; text-align: center; }
+  .weeknav .wkinfo .wk { font-size: 16px; font-weight: 700; }
+  .weeknav input[type=date] {
+    background: var(--card2); color: var(--muted); border: 1px solid var(--line);
+    border-radius: 8px; padding: 4px 8px; font-size: 12px; margin-top: 4px;
+    font-family: inherit;
+  }
+  .container { padding: 16px 14px 0; max-width: 720px; margin: 0 auto; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .day {
+    background: var(--card); border-radius: var(--radius); margin-bottom: 14px;
+    overflow: hidden; border: 1px solid var(--line);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.28);
+    animation: rise .35s ease both;
+  }
+  #plan .day:nth-child(2) { animation-delay: .05s; }
+  #plan .day:nth-child(3) { animation-delay: .1s; }
+  .day-head {
+    padding: 16px; display: flex; align-items: center; gap: 11px; min-height: 44px;
+    font-size: 15px; cursor: pointer; user-select: none; touch-action: manipulation;
+  }
+  .badge {
+    --c: var(--accent); font-size: 12px; font-weight: 700; color: #fff;
+    padding: 4px 9px; border-radius: 8px; flex-shrink: 0;
+    background: color-mix(in srgb, var(--c) 26%, transparent);
+    border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
+    color: color-mix(in srgb, var(--c) 60%, #fff);
+  }
+  .day-title { font-weight: 700; flex: 1; }
+  .day-head .prog { font-size: 12px; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .chev { color: var(--muted); font-size: 13px; transition: transform .25s; margin-left: 2px; }
+  .day.collapsed .chev { transform: rotate(-90deg); }
+  .day-progbar { height: 3px; background: var(--card2); margin: 0 16px; border-radius: 3px; overflow: hidden; }
+  .day-progbar i { display: block; height: 100%; width: 0; border-radius: 3px; transition: width .4s ease; }
+  .day.collapsed .day-body { display: none; }
+  .day-body { padding: 6px 16px 10px; }
+  .ex { padding: 12px 0; border-top: 1px solid var(--line); transition: opacity .2s; }
+  .ex:first-child { border-top: none; }
+  .ex.done { opacity: .5; }
+  .ex.done .ex-name { text-decoration: line-through; }
+  .ex-top { display: flex; align-items: center; gap: 12px; }
+  .ex-name { font-size: 14px; font-weight: 600; flex: 1; line-height: 1.4; }
+  .ex-target { font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+  .chk {
+    position: relative; width: 28px; height: 28px; border-radius: 9px; border: 2px solid var(--line);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    flex-shrink: 0; font-size: 16px; color: transparent; transition: .18s; touch-action: manipulation;
+  }
+  .chk::after { content: ''; position: absolute; inset: -9px; }  /* 28+18 ≈ 46px tap target */
+  .chk:active { transform: scale(.88); }
+  .chk:focus-visible, .pill:focus-visible, .weeknav button:focus-visible, .footer-actions button:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .chk.on { background: var(--green); border-color: var(--green); color: #06251a; box-shadow: 0 4px 12px rgba(52,211,153,.35); }
+  .sets { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+  .sets input, .cardio-min input {
+    width: 66px; min-height: 44px; background: var(--card2); border: 1px solid var(--line);
+    border-radius: 10px; color: var(--text); padding: 9px 6px; font-size: 16px; text-align: center;
+    transition: .15s; -moz-appearance: textfield;
+  }
+  .sets input::-webkit-outer-spin-button, .sets input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .sets input:focus, .cardio-min input:focus, .metric-row input:focus, textarea:focus, #liftSel:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,140,255,.22);
+  }
+  .sets input:not(:placeholder-shown) { border-color: rgba(91,140,255,.5); color: #fff; font-weight: 700; background: rgba(91,140,255,.08); }
+  .sets input::placeholder { color: var(--muted); font-size: 11px; }
+  .sets .unit { font-size: 11px; color: var(--muted); align-self: center; }
+  .cardio { padding: 14px 0 4px; border-top: 1px solid var(--line); }
+  .cardio.done { opacity: .55; }
+  .cardio-label { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+  .cardio-opts { display: flex; flex-wrap: wrap; gap: 7px; }
+  .pill {
+    padding: 10px 14px; border-radius: 20px; border: 1px solid var(--line);
+    background: var(--card2); font-size: 13px; cursor: pointer; color: var(--muted); transition: .15s; touch-action: manipulation;
+  }
+  .pill:active { transform: scale(.94); }
+  .pill.on { background: linear-gradient(120deg, var(--accent), var(--accent2)); border-color: transparent; color: #fff; font-weight: 600; }
+  .cardio-min { margin-top: 12px; display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+  .section-title { font-size: 13px; font-weight: 700; margin: 6px 2px 11px; color: var(--muted); letter-spacing: .3px; text-transform: none; }
+  .metrics, .chart-card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--line); padding: 16px; margin-bottom: 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.28); }
+  .metric-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; }
+  .metric-row + .metric-row { border-top: 1px solid var(--line); }
+  .metric-row label { flex: 1; font-size: 14px; font-weight: 600; }
+  .metric-row input { width: 84px; min-height: 44px; background: var(--card2); border: 1px solid var(--line); border-radius: 10px; color: var(--text); padding: 9px; text-align: center; font-size: 16px; }
+  .metric-row .delta { width: 60px; text-align: right; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .delta.down { color: var(--green); }
+  .delta.up { color: var(--mon); }
+  textarea { width: 100%; background: var(--card2); border: 1px solid var(--line); border-radius: 10px; color: var(--text); padding: 11px; font-size: 14px; resize: vertical; font-family: inherit; line-height: 1.5; }
+  .footer-actions { display: flex; gap: 10px; padding: 0 14px; max-width: 720px; margin: 10px auto 0; }
+  .footer-actions button { flex: 1; padding: 13px; border-radius: 12px; border: 1px solid var(--line); background: var(--card2); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; transition: .15s; }
+  .footer-actions button:active { transform: scale(.97); }
+  .footer-actions button.danger { color: var(--mon); border-color: rgba(251,113,133,.3); }
+  .saved-tip { text-align: center; font-size: 12px; color: var(--green); height: 16px; margin-top: 12px; transition: .2s; opacity: 0; }
+  .saved-tip.show { opacity: 1; }
+  .tip { font-size: 12px; color: var(--muted); padding: 6px 16px 0; max-width: 720px; margin: 0 auto; line-height: 1.7; }
+  .chart-tabs { display: flex; gap: 6px; margin-bottom: 14px; background: var(--card2); padding: 4px; border-radius: 12px; }
+  .chart-tabs .pill { flex: 1; text-align: center; border-color: transparent; background: transparent; }
+  .chart-tabs .pill.on { box-shadow: 0 4px 12px rgba(91,140,255,.3); }
+  .chart-wrap { position: relative; width: 100%; height: 200px; }
+  .chart-wrap canvas { width: 100%; height: 100%; display: block; }
+  .chart-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 70px 0; }
+  #liftSel { width: 100%; min-height: 44px; background: var(--card2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 11px; font-size: 16px; font-family: inherit; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+    .day { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="title-row">
+    <div>
+      <h1>🏋️ 训练打卡</h1>
+      <div class="sub">175cm · 增肌减脂</div>
+    </div>
+    <div class="ring" id="ring" role="img" aria-label="本周完成进度"><span id="ringTxt">0%</span></div>
+  </div>
+  <div class="weeknav">
+    <button id="prevWk" aria-label="上一周">‹</button>
+    <div class="wkinfo">
+      <div class="wk" id="wkLabel">第 1 周</div>
+      <input type="date" id="wkDate" aria-label="本周开始日期">
+    </div>
+    <button id="nextWk" aria-label="下一周">›</button>
+  </div>
+</header>
+
+<div class="container" id="plan"></div>
+
+<div class="container">
+  <div class="section-title">📈 趋势（汇总各周数据）</div>
+  <div class="chart-card">
+    <div class="chart-tabs">
+      <span class="pill on" data-tab="weight">体重 kg</span>
+      <span class="pill" data-tab="waist">腰围 cm</span>
+      <span class="pill" data-tab="fat">体脂 %</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="chart"></canvas>
+      <div class="chart-empty" id="chartEmpty" style="display:none">至少记录 1 周数据后显示曲线</div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="section-title">💪 力量进步（各周该动作的最重一组）</div>
+  <div class="chart-card">
+    <select id="liftSel"></select>
+    <div class="chart-wrap" style="margin-top:12px">
+      <canvas id="liftChart"></canvas>
+      <div class="chart-empty" id="liftEmpty" style="display:none">填入该动作的重量后显示曲线</div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="section-title">📊 本周身体记录（建议晨起空腹测）</div>
+  <div class="metrics" id="metrics">
+    <div class="metric-row">
+      <label>体重 (kg)</label>
+      <input type="number" step="0.1" data-m="weightStart" placeholder="周一">
+      <input type="number" step="0.1" data-m="weightEnd" placeholder="周日">
+      <span class="delta" data-d="weight"></span>
+    </div>
+    <div class="metric-row">
+      <label>腰围 (cm)</label>
+      <input type="number" step="0.1" data-m="waistStart" placeholder="周一">
+      <input type="number" step="0.1" data-m="waistEnd" placeholder="周日">
+      <span class="delta" data-d="waist"></span>
+    </div>
+    <div class="metric-row">
+      <label>体脂率 (%)</label>
+      <input type="number" step="0.1" data-m="fatStart" placeholder="周一">
+      <input type="number" step="0.1" data-m="fatEnd" placeholder="周日">
+      <span class="delta" data-d="fat"></span>
+    </div>
+  </div>
+
+  <div class="section-title">✅ 本周自评</div>
+  <div class="metrics">
+    <textarea data-note rows="3" placeholder="蛋白达标几天？睡眠如何？下周改进一点……"></textarea>
+  </div>
+</div>
+
+<div class="footer-actions">
+  <button id="exportBtn">📤 导出数据</button>
+  <button id="resetBtn" class="danger">清空本周</button>
+</div>
+<div class="saved-tip" id="savedTip">已自动保存 ✓</div>
+<div class="tip">提示：看进步别只盯体重——<b>重量上升 + 腰围下降</b>才是对的方向。数据保存在本机浏览器，换设备/清缓存会丢，重要数据记得用"导出"备份。</div>
+
+<script>
+const PLAN = [
+  { day:'周一', title:'胸 + 三头 + 腹', color:'var(--mon)', cardio:true, ex:[
+    {n:'平板杠铃/哑铃卧推', t:'4 × 8-12', s:4},
+    {n:'上斜哑铃卧推', t:'3 × 10-12', s:3},
+    {n:'坐姿器械夹胸', t:'3 × 12-15', s:3},
+    {n:'双杠臂屈伸（可选）', t:'3 × 力竭', s:3},
+    {n:'三头绳索下压', t:'3 × 12-15', s:3},
+    {n:'悬垂举腿（腹）', t:'3 × 12', s:3, bw:true},
+    {n:'卷腹（腹）', t:'3 × 20', s:3, bw:true},
+  ]},
+  { day:'周三', title:'背 + 二头', color:'var(--wed)', cardio:true, ex:[
+    {n:'高位下拉', t:'4 × 10-12', s:4},
+    {n:'坐姿划船', t:'3 × 10-12', s:3},
+    {n:'单臂哑铃划船', t:'3 × 12', s:3},
+    {n:'直臂下压 / 面拉', t:'3 × 15', s:3},
+    {n:'哑铃弯举（二头）', t:'3 × 12', s:3},
+  ]},
+  { day:'周五', title:'腿 + 肩 + 腹', color:'var(--fri)', cardio:true, ex:[
+    {n:'杠铃深蹲 / 腿举', t:'4 × 10-12', s:4},
+    {n:'腿屈伸', t:'3 × 12-15', s:3},
+    {n:'坐姿腿弯举', t:'3 × 12-15', s:3},
+    {n:'哑铃肩上推举', t:'3 × 10-12', s:3},
+    {n:'哑铃侧平举', t:'3 × 15', s:3},
+    {n:'俄罗斯转体（腹）', t:'3 × 20', s:3, bw:true},
+    {n:'平板支撑（腹）', t:'3 × 45秒', s:3, bw:true},
+  ]},
+];
+const CARDIO = ['椭圆机','划船机','坡度快走','动感单车','登山机','跳绳','HIIT冲刺'];
+
+let week = parseInt(localStorage.getItem('curWeek') || '1');
+const key = w => 'fit_w' + w;
+let data = load();
+
+function load(){
+  try { return JSON.parse(localStorage.getItem(key(week))) || {}; }
+  catch(e){ return {}; }
+}
+function save(){
+  localStorage.setItem(key(week), JSON.stringify(data));
+  localStorage.setItem('curWeek', week);
+  const t = document.getElementById('savedTip');
+  t.classList.add('show'); clearTimeout(window._st);
+  window._st = setTimeout(()=>t.classList.remove('show'), 1200);
+}
+function g(path, def){ return data[path] !== undefined ? data[path] : def; }
+function set(path, val){ data[path] = val; save(); }
+
+function render(){
+  document.getElementById('wkLabel').textContent = '第 ' + week + ' 周';
+  document.getElementById('wkDate').value = g('date','');
+  const root = document.getElementById('plan');
+  root.innerHTML = '';
+  PLAN.forEach((d, di) => {
+    const card = document.createElement('div'); card.className = 'day';
+    const total = d.ex.length + (d.cardio?1:0);
+    const head = document.createElement('div'); head.className = 'day-head';
+    head.innerHTML = `<span class="badge" style="--c:${d.color}">${d.day}</span><span class="day-title">${d.title}</span><span class="prog" id="prog${di}"></span><span class="chev">⌄</span>`;
+    const bar = document.createElement('div'); bar.className = 'day-progbar';
+    bar.innerHTML = `<i id="bar${di}" style="background:${d.color}"></i>`;
+    const body = document.createElement('div'); body.className = 'day-body';
+
+    d.ex.forEach((e, ei) => {
+      const pid = `d${di}e${ei}`;
+      const row = document.createElement('div'); row.className = 'ex';
+      const done = g(pid+'_done', false);
+      if(done) row.classList.add('done');
+      let setsHtml = '<div class="sets">';
+      for(let i=0;i<e.s;i++){
+        const ph = e.bw ? '次' : 'kg';
+        setsHtml += `<input type="number" inputmode="decimal" data-set="${pid}_${i}" placeholder="${ph}" aria-label="${e.n} 第${i+1}组" value="${g(pid+'_'+i,'')}">`;
+      }
+      setsHtml += `<span class="unit">${e.bw?'次/秒':'kg'}</span></div>`;
+      row.innerHTML = `<div class="ex-top">
+          <div class="ex-name">${e.n}<div class="ex-target">${e.t}</div></div>
+          <div class="chk ${done?'on':''}" data-chk="${pid}_done" role="checkbox" aria-checked="${done}" aria-label="${e.n} 完成" tabindex="0">✓</div>
+        </div>${setsHtml}`;
+      body.appendChild(row);
+    });
+
+    if(d.cardio){
+      const cid = `d${di}_cardio`;
+      const c = document.createElement('div'); c.className = 'cardio';
+      if(g(cid+'_done',false)) c.classList.add('done');
+      const sel = g(cid+'_sel','');
+      let pills = '<div class="cardio-opts">';
+      CARDIO.forEach(o => pills += `<span class="pill ${sel===o?'on':''}" data-pill="${cid}" data-val="${o}">${o}</span>`);
+      pills += '</div>';
+      c.innerHTML = `<div class="cardio-label">有氧（20-30分钟，任选一项）</div>${pills}
+        <div class="cardio-min">实际时长 <input type="number" inputmode="numeric" data-set="${cid}_min" placeholder="分钟" aria-label="有氧实际时长（分钟）" value="${g(cid+'_min','')}"> 分钟
+        <span class="chk ${g(cid+'_done',false)?'on':''}" data-chk="${cid}_done" role="checkbox" aria-checked="${g(cid+'_done',false)}" aria-label="有氧完成" tabindex="0" style="margin-left:auto">✓</span></div>`;
+      body.appendChild(c);
+    }
+
+    card.appendChild(head); card.appendChild(bar); card.appendChild(body);
+    head.addEventListener('click', ()=> card.classList.toggle('collapsed'));
+    root.appendChild(card);
+    updateProg(di);
+  });
+  renderDeltas();
+  // notes
+  document.querySelector('[data-note]').value = g('note','');
+  // metrics
+  document.querySelectorAll('[data-m]').forEach(inp => inp.value = g(inp.dataset.m,''));
+  drawChart();
+  drawLift();
+}
+
+function updateProg(di){
+  const d = PLAN[di];
+  const total = d.ex.length + (d.cardio?1:0);
+  let done = 0;
+  d.ex.forEach((e,ei)=>{ if(g(`d${di}e${ei}_done`,false)) done++; });
+  if(d.cardio && g(`d${di}_cardio_done`,false)) done++;
+  const el = document.getElementById('prog'+di);
+  if(el) el.textContent = done+'/'+total + (done===total?' 🎉':'');
+  const bar = document.getElementById('bar'+di);
+  if(bar) bar.style.width = (total?Math.round(done/total*100):0)+'%';
+  updateOverall();
+}
+function updateOverall(){
+  let done=0, total=0;
+  PLAN.forEach((d,di)=>{
+    total += d.ex.length + (d.cardio?1:0);
+    d.ex.forEach((e,ei)=>{ if(g(`d${di}e${ei}_done`,false)) done++; });
+    if(d.cardio && g(`d${di}_cardio_done`,false)) done++;
+  });
+  const pct = total ? Math.round(done/total*100) : 0;
+  const ring = document.getElementById('ring');
+  if(ring){ ring.style.setProperty('--p', pct); document.getElementById('ringTxt').textContent = pct+'%'; }
+}
+
+function renderDeltas(){
+  [['weight','weightStart','weightEnd'],['waist','waistStart','waistEnd'],['fat','fatStart','fatEnd']].forEach(([k,a,b])=>{
+    const sv = parseFloat(g(a,'')), ev = parseFloat(g(b,''));
+    const el = document.querySelector(`[data-d="${k}"]`);
+    if(!isNaN(sv) && !isNaN(ev)){
+      const diff = (ev-sv);
+      el.textContent = (diff>0?'+':'') + diff.toFixed(1);
+      el.className = 'delta ' + (diff<0?'down':diff>0?'up':'');
+    } else { el.textContent=''; el.className='delta'; }
+  });
+}
+
+// events (delegation)
+document.addEventListener('click', e=>{
+  const chk = e.target.closest('[data-chk]');
+  if(chk){
+    const k = chk.dataset.chk; const v = !g(k,false);
+    set(k, v); chk.classList.toggle('on', v); chk.setAttribute('aria-checked', v);
+    const row = chk.closest('.ex') || chk.closest('.cardio');
+    if(row) row.classList.toggle('done', v);
+    const di = parseInt(k.match(/^d(\d+)/)[1]); updateProg(di);
+    return;
+  }
+  const pill = e.target.closest('[data-pill]');
+  if(pill){
+    const grp = pill.dataset.pill, val = pill.dataset.val;
+    const cur = g(grp+'_sel','');
+    const nv = cur===val ? '' : val;
+    set(grp+'_sel', nv);
+    document.querySelectorAll(`[data-pill="${grp}"]`).forEach(p=>p.classList.toggle('on', p.dataset.val===nv));
+  }
+});
+document.addEventListener('input', e=>{
+  const s = e.target.dataset.set;
+  if(s){ set(s, e.target.value); if(s.indexOf('_cardio')===-1) drawLift(); return; }
+  const m = e.target.dataset.m;
+  if(m!==undefined && e.target.hasAttribute('data-m')){ set(m, e.target.value); renderDeltas(); drawChart(); return; }
+  if(e.target.hasAttribute('data-note')){ set('note', e.target.value); }
+});
+document.addEventListener('keydown', e=>{
+  if((e.key==='Enter'||e.key===' ') && e.target.matches('[data-chk]')){ e.preventDefault(); e.target.click(); }
+});
+document.getElementById('wkDate').addEventListener('input', e=> set('date', e.target.value));
+
+document.getElementById('prevWk').onclick = ()=>{ if(week>1){week--; data=load(); render();} };
+document.getElementById('nextWk').onclick = ()=>{ week++; data=load(); render(); };
+document.getElementById('resetBtn').onclick = ()=>{
+  if(confirm('确定清空第 '+week+' 周的所有记录？')){ data={}; localStorage.removeItem(key(week)); render(); }
+};
+// ---- 趋势图 ----
+let chartTab = 'weight';
+const CHART_CFG = {
+  weight: { label:'体重 (kg)', color:'#4f8cff', start:'weightStart', end:'weightEnd' },
+  waist:  { label:'腰围 (cm)', color:'#2ec27e', start:'waistStart',  end:'waistEnd' },
+  fat:    { label:'体脂 (%)',  color:'#f5a623', start:'fatStart',    end:'fatEnd' },
+};
+function collectSeries(cfg){
+  const pts = [];
+  for(let i=1;i<=week+10;i++){
+    const raw = localStorage.getItem(key(i));
+    if(!raw) continue;
+    let d; try{ d=JSON.parse(raw); }catch(e){ continue; }
+    const v = parseFloat(d[cfg.end]); const s = parseFloat(d[cfg.start]);
+    const val = !isNaN(v) ? v : (!isNaN(s) ? s : null);
+    if(val!==null) pts.push({ w:i, v:val });
+  }
+  return pts;
+}
+function drawChart(){
+  const cfg = CHART_CFG[chartTab];
+  paintChart(document.getElementById('chart'), document.getElementById('chartEmpty'), collectSeries(cfg), cfg.color);
+}
+function paintChart(cv, empty, pts, color){
+  if(pts.length === 0){ cv.style.display='none'; empty.style.display='block'; return; }
+  cv.style.display='block'; empty.style.display='none';
+
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W*dpr; cv.height = H*dpr;
+  const ctx = cv.getContext('2d'); ctx.scale(dpr,dpr); ctx.clearRect(0,0,W,H);
+
+  const padL=40, padR=14, padT=16, padB=26;
+  const plotW = W-padL-padR, plotH = H-padT-padB;
+  let vals = pts.map(p=>p.v);
+  let min = Math.min(...vals), max = Math.max(...vals);
+  if(min===max){ min-=1; max+=1; } else { const m=(max-min)*0.15; min-=m; max+=m; }
+  const wMin = pts[0].w, wMax = pts[pts.length-1].w;
+  const xOf = w => padL + (wMax===wMin ? plotW/2 : (w-wMin)/(wMax-wMin)*plotW);
+  const yOf = v => padT + (1-(v-min)/(max-min))*plotH;
+
+  // grid + y labels
+  ctx.font='11px sans-serif'; ctx.fillStyle='#8b93a1'; ctx.textAlign='right'; ctx.textBaseline='middle';
+  ctx.strokeStyle='#2c313c'; ctx.lineWidth=1;
+  for(let i=0;i<=3;i++){
+    const v = min + (max-min)*i/3, y = yOf(v);
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke();
+    ctx.fillText(v.toFixed(1), padL-6, y);
+  }
+  // x labels
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  pts.forEach(p=> ctx.fillText('W'+p.w, xOf(p.w), H-padB+6));
+
+  // line
+  ctx.strokeStyle=color; ctx.lineWidth=2.5; ctx.beginPath();
+  pts.forEach((p,i)=>{ const x=xOf(p.w), y=yOf(p.v); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.stroke();
+  // dots + value labels
+  ctx.fillStyle=color;
+  pts.forEach(p=>{
+    const x=xOf(p.w), y=yOf(p.v);
+    ctx.beginPath(); ctx.arc(x,y,4,0,7); ctx.fill();
+    ctx.fillStyle='#e6e8ec'; ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='bottom';
+    ctx.fillText(p.v.toFixed(1), x, y-7); ctx.fillStyle=color;
+  });
+}
+document.querySelectorAll('[data-tab]').forEach(t=> t.onclick = ()=>{
+  chartTab = t.dataset.tab;
+  document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('on', x===t));
+  drawChart();
+});
+window.addEventListener('resize', drawChart);
+
+// ---- 力量进步图 ----
+const LIFTS = [];
+PLAN.forEach((d,di)=> d.ex.forEach((e,ei)=>{ if(!e.bw) LIFTS.push({ key:`d${di}e${ei}`, sets:e.s, name:`${d.day} · ${e.n}` }); }));
+let liftKey = LIFTS[0].key;
+(function initLiftSel(){
+  const sel = document.getElementById('liftSel');
+  LIFTS.forEach(l=>{ const o=document.createElement('option'); o.value=l.key; o.textContent=l.name; sel.appendChild(o); });
+  sel.value = liftKey;
+  sel.onchange = ()=>{ liftKey = sel.value; drawLift(); };
+})();
+function collectLift(lift){
+  const pts = [];
+  for(let i=1;i<=week+10;i++){
+    const raw = localStorage.getItem(key(i));
+    if(!raw) continue;
+    let d; try{ d=JSON.parse(raw); }catch(e){ continue; }
+    let best = null;
+    for(let s=0;s<lift.sets;s++){
+      const v = parseFloat(d[`${lift.key}_${s}`]);
+      if(!isNaN(v) && (best===null || v>best)) best = v;
+    }
+    if(best!==null) pts.push({ w:i, v:best });
+  }
+  return pts;
+}
+function drawLift(){
+  const lift = LIFTS.find(l=>l.key===liftKey);
+  paintChart(document.getElementById('liftChart'), document.getElementById('liftEmpty'), collectLift(lift), '#ff6b6b');
+}
+window.addEventListener('resize', drawLift);
+
+document.getElementById('exportBtn').onclick = ()=>{
+  let all = {};
+  for(let i=1;i<=week+5;i++){ const d = localStorage.getItem(key(i)); if(d) all['第'+i+'周']=JSON.parse(d); }
+  const blob = new Blob([JSON.stringify(all,null,2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '训练记录_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+};
+
+render();
+
+// 注册 Service Worker：离线可用 + 保护本地数据不被 iOS 清除
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
