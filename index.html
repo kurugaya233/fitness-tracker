@@ -181,6 +181,36 @@
   .prot-badge.mid  { color: var(--fri); }
   .prot-badge.low  { color: var(--mon); }
   .warn-text { font-size: 13px !important; font-weight: 500 !important; line-height: 1.45; }
+  /* Meal tracker */
+  .meal-days { display: flex; gap: 5px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; margin-bottom: 12px; scrollbar-width: none; }
+  .meal-days::-webkit-scrollbar { display: none; }
+  .meal-day { flex-shrink: 0; padding: 8px 13px; border-radius: 9px; background: var(--card2); border: 1px solid var(--line); font-size: 13px; color: var(--muted); cursor: pointer; touch-action: manipulation; min-height: 36px; display: grid; place-items: center; }
+  .meal-day.active { background: linear-gradient(120deg, var(--accent), var(--accent2)); border-color: transparent; color: #fff; font-weight: 600; box-shadow: 0 3px 10px rgba(91,140,255,.3); }
+  .meal-totals { display: flex; gap: 10px; padding: 11px 12px; background: var(--card2); border-radius: 10px; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+  .meal-totals .stat { flex: 1; min-width: 0; }
+  .meal-totals .label { color: var(--muted); font-size: 11px; display: block; margin-bottom: 2px; }
+  .meal-totals .val { font-size: 17px; font-weight: 700; }
+  .meal-totals .gap { font-size: 11px; margin-left: 4px; font-weight: 600; }
+  .meal-totals .gap-pos { color: var(--mon); }
+  .meal-totals .gap-ok { color: var(--green); }
+  .meal-empty { font-size: 13px; color: var(--muted); text-align: center; padding: 14px 0; }
+  .meal-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .meal-item { display: flex; align-items: center; gap: 8px; padding: 9px 10px; background: var(--card2); border-radius: 9px; font-size: 13px; }
+  .meal-item .name { flex: 1; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meal-item .nut { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .meal-item input.g { width: 56px; min-height: 36px; background: var(--card); border: 1px solid var(--line); border-radius: 7px; color: var(--text); padding: 5px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .meal-item input.g:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(91,140,255,.22); }
+  .meal-item .unit { font-size: 11px; color: var(--muted); }
+  .meal-item .del { width: 30px; height: 30px; border-radius: 7px; background: transparent; border: 1px solid var(--line); color: var(--mon); font-size: 14px; cursor: pointer; flex-shrink: 0; display: grid; place-items: center; touch-action: manipulation; font-family: inherit; }
+  .meal-add { width: 100%; padding: 11px; border-radius: 10px; background: var(--card2); border: 1px dashed var(--line); color: var(--accent); font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; touch-action: manipulation; }
+  .meal-picker { background: var(--card2); border-radius: 10px; padding: 10px 12px; margin-top: 8px; }
+  .meal-picker.hidden { display: none; }
+  .food-cat-title { font-size: 11px; color: var(--muted); margin: 8px 0 6px; font-weight: 600; letter-spacing: .3px; }
+  .food-cat-title:first-child { margin-top: 2px; }
+  .food-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .food-chip { padding: 8px 11px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); font-size: 12px; color: var(--text); cursor: pointer; touch-action: manipulation; }
+  .food-chip:active { transform: scale(.94); background: var(--accent); border-color: var(--accent); color: #fff; }
+  .food-chip .sz { opacity: .55; margin-left: 2px; font-size: 11px; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
     .day { animation: none !important; }
@@ -260,6 +290,9 @@
   <div class="section-title">🥩 每日蛋白质（目标 140g/天）</div>
   <div class="metrics" id="proteinGrid"></div>
 
+  <div class="section-title">🍽 今日饮食（点食物自动算蛋白和热量）</div>
+  <div class="metrics" id="mealTracker"></div>
+
   <div class="section-title">⚠️ 退一步信号自检</div>
   <div class="metrics" id="warningList"></div>
 
@@ -326,6 +359,46 @@ const WARNINGS = [
   '长期头晕、注意力涣散',
   '性欲明显下降',
 ];
+// 食物数据库 — 数值按标准份(g)给的蛋白(p)/碳水(c)/脂肪(f)/热量(k)
+const FOODS = [
+  // 蛋白质
+  { id:'chick',    n:'鸡胸肉(熟)',     cat:'p', g:100, p:31,  c:0,   f:3.6, k:165 },
+  { id:'chickleg', n:'鸡腿去皮(熟)',   cat:'p', g:100, p:28,  c:0,   f:7,   k:200 },
+  { id:'beef',     n:'瘦牛肉(熟)',     cat:'p', g:100, p:32,  c:0,   f:6,   k:220 },
+  { id:'salmon',   n:'三文鱼(熟)',     cat:'p', g:100, p:25,  c:0,   f:12,  k:208 },
+  { id:'shrimp',   n:'虾仁(熟)',       cat:'p', g:100, p:20,  c:1,   f:1,   k:100 },
+  { id:'fish',     n:'龙利鱼(熟)',     cat:'p', g:100, p:20,  c:0,   f:1.5, k:100 },
+  { id:'egg',      n:'全蛋',            cat:'p', g:50,  p:6,   c:1,   f:5,   k:75 },
+  { id:'eggw',     n:'蛋白(1个)',       cat:'p', g:33,  p:3.5, c:0.2, f:0,   k:17 },
+  { id:'tofu',     n:'北豆腐',          cat:'p', g:100, p:12,  c:4,   f:8,   k:140 },
+  { id:'milk',     n:'脱脂牛奶',        cat:'p', g:250, p:8,   c:12,  f:0.2, k:85 },
+  { id:'yogurt',   n:'希腊酸奶(无糖)',  cat:'p', g:100, p:10,  c:4,   f:0,   k:60 },
+  { id:'whey',     n:'乳清蛋白粉',      cat:'p', g:30,  p:24,  c:3,   f:1.5, k:120 },
+  // 碳水
+  { id:'rice',     n:'米饭(熟)',        cat:'c', g:100, p:2.5, c:28,  f:0.3, k:130 },
+  { id:'oats',     n:'燕麦(干)',        cat:'c', g:40,  p:6,   c:27,  f:3,   k:150 },
+  { id:'sweetp',   n:'红薯(熟)',        cat:'c', g:100, p:1.6, c:20,  f:0.1, k:86 },
+  { id:'corn',     n:'玉米(整根)',      cat:'c', g:200, p:5,   c:25,  f:1.5, k:130 },
+  { id:'bread',    n:'全麦面包(1片)',   cat:'c', g:30,  p:4,   c:14,  f:1,   k:80 },
+  { id:'noodle',   n:'荞麦面(熟)',      cat:'c', g:100, p:5,   c:25,  f:1,   k:130 },
+  { id:'banana',   n:'香蕉',            cat:'c', g:100, p:1,   c:22,  f:0.3, k:90 },
+  { id:'apple',    n:'苹果',            cat:'c', g:100, p:0.3, c:14,  f:0.2, k:55 },
+  { id:'berry',    n:'蓝莓',            cat:'c', g:100, p:0.7, c:14,  f:0.3, k:55 },
+  // 脂肪
+  { id:'avocado',  n:'牛油果',          cat:'f', g:50,  p:1,   c:2,   f:7.5, k:80 },
+  { id:'oliveoil', n:'橄榄油(1勺)',     cat:'f', g:14,  p:0,   c:0,   f:14,  k:120 },
+  { id:'almond',   n:'杏仁(12粒)',      cat:'f', g:12,  p:2.5, c:2,   f:7,   k:80 },
+  { id:'walnut',   n:'核桃(3颗)',       cat:'f', g:12,  p:1.8, c:1.6, f:8,   k:80 },
+  { id:'pb',       n:'花生酱(1勺)',     cat:'f', g:16,  p:4,   c:3,   f:8,   k:100 },
+  // 蔬菜
+  { id:'broccoli', n:'西兰花',          cat:'v', g:100, p:2.8, c:5,   f:0.4, k:34 },
+  { id:'spinach',  n:'菠菜',            cat:'v', g:100, p:2.9, c:3.6, f:0.4, k:23 },
+  { id:'cuke',     n:'黄瓜',            cat:'v', g:100, p:0.7, c:3.6, f:0.1, k:15 },
+];
+const FOOD_CATS = { p:'🥩 蛋白质', c:'🍚 碳水', f:'🥑 脂肪', v:'🥦 蔬菜' };
+const _todayIdx = () => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; };
+let mealDay = parseInt(localStorage.getItem('mealDay'));
+if(isNaN(mealDay) || mealDay < 0 || mealDay > 6) mealDay = _todayIdx();
 
 let week = parseInt(localStorage.getItem('curWeek') || '1');
 const key = w => 'fit_w' + w;
@@ -404,6 +477,7 @@ function render(){
   drawChart();
   drawLift();
   renderProtein();
+  renderMealTracker();
   renderWarnings();
 }
 
@@ -469,6 +543,90 @@ function updateWarnSummary(){
   sum.classList.toggle('alert', n>=2);
 }
 
+// ---- 饮食追踪 ----
+const foodById = id => FOODS.find(f => f.id === id);
+function getMeals(d){ const v = g('meal_'+d, null); return Array.isArray(v) ? v : []; }
+function setMeals(d, arr){ set('meal_'+d, arr); }
+function mealTotals(d){
+  let p=0,c=0,f=0,k=0;
+  getMeals(d).forEach(it => {
+    const food = foodById(it.f); if(!food) return;
+    const m = it.g / food.g;
+    p += food.p*m; c += food.c*m; f += food.f*m; k += food.k*m;
+  });
+  return { p:Math.round(p), c:Math.round(c), f:Math.round(f), k:Math.round(k) };
+}
+function renderMealTracker(){
+  const root = document.getElementById('mealTracker');
+  if(!root) return;
+  const expanded = root.dataset.expanded === '1';
+  const days = DAYS.map((dn,i)=> `<span class="meal-day ${i===mealDay?'active':''}" data-mealday="${i}" role="button" tabindex="0">${dn}</span>`).join('');
+  const items = getMeals(mealDay);
+  const tot = mealTotals(mealDay);
+  const gap = PROT_TARGET - tot.p;
+  const gapHtml = items.length===0 ? '' :
+    (gap > 0
+      ? `<span class="gap gap-pos">差 ${gap}g</span>`
+      : `<span class="gap gap-ok">+${-gap}g</span>`);
+  const itemsHtml = items.length === 0
+    ? '<div class="meal-empty">还没记录今日饮食 · 下方点食物添加</div>'
+    : '<div class="meal-list">' + items.map((it, idx) => {
+        const food = foodById(it.f); if(!food) return '';
+        const m = it.g / food.g;
+        const p = Math.round(food.p*m), k = Math.round(food.k*m);
+        return `<div class="meal-item">
+          <span class="name">${food.n}</span>
+          <input type="number" inputmode="numeric" class="g" data-meal-edit="${idx}" value="${it.g}" aria-label="${food.n} 克数">
+          <span class="unit">g</span>
+          <span class="nut">${p}P · ${k}k</span>
+          <button class="del" data-meal-del="${idx}" aria-label="删除">×</button>
+        </div>`;
+      }).join('') + '</div>';
+  const catHtml = Object.keys(FOOD_CATS).map(cat => {
+    const chips = FOODS.filter(f => f.cat === cat).map(f =>
+      `<span class="food-chip" data-meal-add="${f.id}" role="button" tabindex="0">${f.n}<span class="sz">·${f.g}g</span></span>`
+    ).join('');
+    return `<div class="food-cat-title">${FOOD_CATS[cat]}</div><div class="food-chips">${chips}</div>`;
+  }).join('');
+  root.innerHTML = `
+    <div class="meal-days">${days}</div>
+    <div class="meal-totals">
+      <div class="stat"><span class="label">蛋白(目标 ${PROT_TARGET}g)</span><span class="val">${tot.p}</span><span style="font-size:11px;color:var(--muted)">g</span> ${gapHtml}</div>
+      <div class="stat"><span class="label">热量</span><span class="val">${tot.k}</span><span style="font-size:11px;color:var(--muted)"> kcal</span></div>
+      <div class="stat"><span class="label">碳/脂</span><span class="val">${tot.c}</span><span style="font-size:11px;color:var(--muted)">/${tot.f}g</span></div>
+    </div>
+    ${itemsHtml}
+    <button class="meal-add" data-meal-toggle>${expanded ? '× 关闭食物列表' : '+ 添加食物'}</button>
+    <div class="meal-picker ${expanded ? '' : 'hidden'}">${catHtml}</div>
+  `;
+}
+function updateMealOnly(){
+  // 部分刷新：grams 输入时不要重建整棵树以保焦点；只更新 totals 和当前条目的 nut
+  const tot = mealTotals(mealDay);
+  const gap = PROT_TARGET - tot.p;
+  const items = getMeals(mealDay);
+  const root = document.getElementById('mealTracker');
+  if(!root) return;
+  const stats = root.querySelectorAll('.meal-totals .stat .val');
+  if(stats[0]) stats[0].textContent = tot.p;
+  if(stats[1]) stats[1].textContent = tot.k;
+  if(stats[2]) stats[2].textContent = tot.c;
+  const gapEl = root.querySelector('.meal-totals .gap');
+  if(gapEl){
+    gapEl.className = 'gap ' + (gap>0 ? 'gap-pos' : 'gap-ok');
+    gapEl.textContent = gap>0 ? `差 ${gap}g` : `+${-gap}g`;
+  }
+  items.forEach((it,idx)=>{
+    const food = foodById(it.f); if(!food) return;
+    const m = it.g / food.g;
+    const itemEl = root.querySelectorAll('.meal-item')[idx];
+    if(itemEl){
+      const nut = itemEl.querySelector('.nut');
+      if(nut) nut.textContent = `${Math.round(food.p*m)}P · ${Math.round(food.k*m)}k`;
+    }
+  });
+}
+
 function updateProg(di){
   const d = PLAN[di];
   const total = d.ex.length + (d.cardio?1:0);
@@ -518,6 +676,44 @@ document.addEventListener('click', e=>{
     else if(k.startsWith('warn_')) updateWarnSummary();
     return;
   }
+  // meal: switch day
+  const md = e.target.closest('[data-mealday]');
+  if(md){
+    mealDay = parseInt(md.dataset.mealday);
+    localStorage.setItem('mealDay', mealDay);
+    renderMealTracker();
+    return;
+  }
+  // meal: add food from picker
+  const ma = e.target.closest('[data-meal-add]');
+  if(ma){
+    const food = foodById(ma.dataset.mealAdd);
+    if(food){
+      const cur = getMeals(mealDay);
+      cur.push({ f: food.id, g: food.g });
+      setMeals(mealDay, cur);
+      renderMealTracker();
+    }
+    return;
+  }
+  // meal: delete item
+  const mdel = e.target.closest('[data-meal-del]');
+  if(mdel){
+    const idx = parseInt(mdel.dataset.mealDel);
+    const cur = getMeals(mealDay);
+    cur.splice(idx, 1);
+    setMeals(mealDay, cur);
+    renderMealTracker();
+    return;
+  }
+  // meal: toggle food picker
+  const mt = e.target.closest('[data-meal-toggle]');
+  if(mt){
+    const root = document.getElementById('mealTracker');
+    root.dataset.expanded = root.dataset.expanded === '1' ? '0' : '1';
+    renderMealTracker();
+    return;
+  }
   const pill = e.target.closest('[data-pill]');
   if(pill){
     const grp = pill.dataset.pill, val = pill.dataset.val;
@@ -532,6 +728,17 @@ document.addEventListener('input', e=>{
   if(s){ set(s, e.target.value); if(s.indexOf('_cardio')===-1) drawLift(); return; }
   const p = e.target.dataset.prot;
   if(p !== undefined){ set('prot_'+p, e.target.value); applyProtBadgeClass(p); updateProtSummary(); return; }
+  // meal item grams
+  if(e.target.dataset.mealEdit !== undefined){
+    const idx = parseInt(e.target.dataset.mealEdit);
+    const cur = getMeals(mealDay);
+    if(cur[idx]){
+      cur[idx].g = parseFloat(e.target.value) || 0;
+      setMeals(mealDay, cur);
+      updateMealOnly();
+    }
+    return;
+  }
   const m = e.target.dataset.m;
   if(m!==undefined && e.target.hasAttribute('data-m')){ set(m, e.target.value); renderDeltas(); drawChart(); return; }
   if(e.target.hasAttribute('data-note')){ set('note', e.target.value); }
