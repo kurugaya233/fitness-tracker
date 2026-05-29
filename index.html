@@ -27,6 +27,7 @@
     --mon: #fb7185;
     --wed: #5b8cff;
     --fri: #fbbf24;
+    --sat: #a78bfa;
     --radius: 16px;
   }
   body {
@@ -87,6 +88,7 @@
   }
   #plan .day:nth-child(2) { animation-delay: .05s; }
   #plan .day:nth-child(3) { animation-delay: .1s; }
+  #plan .day:nth-child(4) { animation-delay: .15s; }
   .day-head {
     padding: 16px; display: flex; align-items: center; gap: 11px; min-height: 44px;
     font-size: 15px; cursor: pointer; user-select: none; touch-action: manipulation;
@@ -265,26 +267,37 @@
 const PLAN = [
   { day:'周一', title:'胸 + 三头 + 腹', color:'var(--mon)', cardio:true, ex:[
     {n:'平板杠铃/哑铃卧推', t:'4 × 8-12', s:4},
-    {n:'上斜哑铃卧推', t:'3 × 10-12', s:3},
+    {n:'上斜哑铃卧推', t:'4 × 10-12', s:4},
     {n:'坐姿器械夹胸', t:'3 × 12-15', s:3},
     {n:'双杠臂屈伸（可选）', t:'3 × 力竭', s:3},
+    {n:'窄距卧推', t:'3 × 10-12', s:3},
     {n:'三头绳索下压', t:'3 × 12-15', s:3},
     {n:'悬垂举腿（腹）', t:'3 × 12', s:3, bw:true},
     {n:'卷腹（腹）', t:'3 × 20', s:3, bw:true},
   ]},
-  { day:'周三', title:'背 + 二头', color:'var(--wed)', cardio:true, ex:[
-    {n:'高位下拉', t:'4 × 10-12', s:4},
-    {n:'坐姿划船', t:'3 × 10-12', s:3},
+  { day:'周二', title:'背 + 二头', color:'var(--wed)', cardio:true, ex:[
+    {n:'引体向上（辅助）', t:'4 × 5-8', s:4},
+    {n:'高位下拉', t:'3 × 10-12', s:3},
+    {n:'坐姿划船', t:'4 × 10-12', s:4},
     {n:'单臂哑铃划船', t:'3 × 12', s:3},
-    {n:'直臂下压 / 面拉', t:'3 × 15', s:3},
-    {n:'哑铃弯举（二头）', t:'3 × 12', s:3},
+    {n:'面拉', t:'3 × 15', s:3},
+    {n:'杠铃/哑铃弯举', t:'3 × 10-12', s:3},
+    {n:'锤式弯举', t:'3 × 10-12', s:3},
   ]},
-  { day:'周五', title:'腿 + 肩 + 腹', color:'var(--fri)', cardio:true, ex:[
+  { day:'周四', title:'腿（精简）+ 肩', color:'var(--fri)', cardio:true, ex:[
     {n:'杠铃深蹲 / 腿举', t:'4 × 10-12', s:4},
-    {n:'腿屈伸', t:'3 × 12-15', s:3},
-    {n:'坐姿腿弯举', t:'3 × 12-15', s:3},
-    {n:'哑铃肩上推举', t:'3 × 10-12', s:3},
-    {n:'哑铃侧平举', t:'3 × 15', s:3},
+    {n:'罗马尼亚硬拉 / 腿弯举', t:'3 × 10-12', s:3},
+    {n:'提踵', t:'3 × 15', s:3},
+    {n:'哑铃肩上推举', t:'4 × 10-12', s:4},
+    {n:'哑铃侧平举', t:'4 × 12-15', s:4},
+    {n:'俯身侧平举', t:'3 × 12-15', s:3},
+  ]},
+  { day:'周六', title:'上半身强化 + 腹', color:'var(--sat)', cardio:true, ex:[
+    {n:'上斜哑铃卧推', t:'4 × 10-12', s:4},
+    {n:'引体向上（辅助）', t:'3 × 力竭', s:3},
+    {n:'哑铃侧平举', t:'4 × 12-15', s:4},
+    {n:'锤式弯举', t:'3 × 10-12', s:3},
+    {n:'三头绳索下压', t:'3 × 12-15', s:3},
     {n:'俄罗斯转体（腹）', t:'3 × 20', s:3, bw:true},
     {n:'平板支撑（腹）', t:'3 × 45秒', s:3, bw:true},
   ]},

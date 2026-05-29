@@ -1,5 +1,5 @@
 // 训练打卡 Service Worker —— 离线缓存
-const CACHE = 'fit-tracker-v1';
+const CACHE = 'fit-tracker-v2';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', e => {
