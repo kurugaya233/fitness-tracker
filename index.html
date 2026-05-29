@@ -395,8 +395,16 @@ const FOODS = [
   { id:'broccoli', n:'西兰花',          cat:'v', g:100, p:2.8, c:5,   f:0.4, k:34 },
   { id:'spinach',  n:'菠菜',            cat:'v', g:100, p:2.9, c:3.6, f:0.4, k:23 },
   { id:'cuke',     n:'黄瓜',            cat:'v', g:100, p:0.7, c:3.6, f:0.1, k:15 },
+  // 中式早餐刺客（高油，慎选）
+  { id:'jiucai',   n:'韭菜盒子(1个)',   cat:'m', g:120, p:8,   c:32,  f:15,  k:280 },
+  { id:'congbing', n:'葱油饼(1张)',     cat:'m', g:150, p:8,   c:45,  f:22,  k:380 },
+  { id:'youtiao',  n:'油条(1根)',       cat:'m', g:60,  p:5,   c:25,  f:16,  k:260 },
+  { id:'jianjiao', n:'煎饺(1个)',       cat:'m', g:25,  p:3,   c:6,   f:4,   k:70 },
+  { id:'baozi',    n:'肉包子(1个)',     cat:'m', g:80,  p:8,   c:25,  f:8,   k:195 },
+  { id:'jianbing', n:'煎饼果子(1套)',   cat:'m', g:250, p:14,  c:50,  f:20,  k:430 },
+  { id:'shaobing', n:'烧饼(1个)',       cat:'m', g:80,  p:7,   c:35,  f:8,   k:230 },
 ];
-const FOOD_CATS = { p:'🥩 蛋白质', c:'🍚 碳水', f:'🥑 脂肪', v:'🥦 蔬菜' };
+const FOOD_CATS = { p:'🥩 蛋白质', c:'🍚 碳水', f:'🥑 脂肪', v:'🥦 蔬菜', m:'🥟 中式快餐(高油慎选)' };
 const _todayIdx = () => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; };
 let mealDay = parseInt(localStorage.getItem('mealDay'));
 if(isNaN(mealDay) || mealDay < 0 || mealDay > 6) mealDay = _todayIdx();
